@@ -117,7 +117,12 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
         
         // claim for receiver
         _claimUnlocked(recipient);
-        
+        if(lockTime == 0){
+            // If there's no locktime do normal transfer
+            _transfer(sender, recipient, amount);
+            return;
+        }
+
         _balances[sender] = _balances[sender].sub(amount, 'ERC20: transfer amount exceeds balance');
         // update lock balance
         _balancesLock[recipient] = _balancesLock[recipient].add(amount);
