@@ -128,6 +128,7 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
         _balancesLock[recipient] = _balancesLock[recipient].add(amount);
         _lockInfo[recipient].amount = _lockInfo[recipient].amount.add(amount);
         _lockInfo[recipient].endTimestamp = block.timestamp.add(lockTime);
+        _lockInfo[recipient].lastClaimTimestamp = block.timestamp;
         emit Transfer(sender, recipient, amount);
     }
     
