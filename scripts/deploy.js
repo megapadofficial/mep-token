@@ -1,7 +1,7 @@
 const config = require('../config');
 const { ethers } = require('hardhat');
 
-const name = "MoonMakerProtocolV2";
+const name = "MegapadToken";
 async function main() {
     let data = [];
     const [deployer] = await ethers.getSigners();

@@ -9,7 +9,7 @@ import "./lib/ERC20/ERC20.sol";
 import "./lib/ERC20/ERC20SlowRelease.sol";
 import "./lib/ERC20/ERC20Capped.sol";
 
-contract MoonMakerProtocolV2 is ERC20, ERC20SlowRelease, ERC20Capped{
+contract MegapadToken is ERC20, ERC20SlowRelease, ERC20Capped{
     using SafeMath for uint256;
     using Address for address;
 
@@ -21,7 +21,7 @@ contract MoonMakerProtocolV2 is ERC20, ERC20SlowRelease, ERC20Capped{
     constructor () 
         ERC20Capped(maxSupply)
         ERC20SlowRelease(30 days)
-        ERC20("MoonMakerProtocolV2", "MMPv2"){
+        ERC20("Megapad", "MEP"){
         // Using ERC20 to mint maxSupply
         ERC20._mint(owner(), maxSupply);
     }

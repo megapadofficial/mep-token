@@ -1,7 +1,7 @@
 const config = require('../config');
 const hre = require("hardhat");
 
-const name = "MoonMakerProtocolV2";
+const name = "MegapadToken";
 async function main(){
     await hre.run('verify:verify', {
         contract: `contracts/${name}.sol:${name}`,
