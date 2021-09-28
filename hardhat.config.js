@@ -54,5 +54,8 @@ module.exports = {
                 }
             }
         }]
+    },
+    mocha: {
+        timeout: 500000
     }
 };
