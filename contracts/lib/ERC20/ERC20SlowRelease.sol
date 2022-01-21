@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
@@ -20,20 +20,28 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
 
     mapping(address => uint256) internal _balancesLock;
     mapping(address => LockInfo) internal _lockInfo;
-    mapping(address => bool) public pools;
+    mapping(address => uint256) public pools;
     address[] public pools_array;
+
     uint256 public lockTime;
+    uint256 public newLockTime;
+    uint256 public noticeTimestamp;
+    uint256 public advanceNoticeTime = 7 days; // Advance Notice for 7 days
     
     modifier onlyPools {
-        require(pools[msg.sender], "Not in pools member.");
+        require(pools[msg.sender] > 0, "Not in pools member.");
         _;
     }
     
+    event SetLockTime(uint256 _lockTime);
+    event LockTimeEffective(uint256 _lockTime);
     event PoolAdded(address indexed pool);
     event PoolRemoved(address indexed pool);
 
     constructor(uint256 _lockTime) Ownable(){
         lockTime = _lockTime;
+        // Set both locktime and nextlocktime
+        newLockTime = _lockTime;
     }
 
     /*
@@ -49,10 +57,8 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
         if(block.timestamp > _lockInfo[account].endTimestamp){
             return _balancesLock[account];
         }
-        else{
-            uint256 progressTime = block.timestamp.sub(_lockInfo[account].lastClaimTimestamp);
-            return _lockInfo[account].amount.mul(progressTime).div(lockTime);
-        }
+        uint256 progressTime = block.timestamp.sub(_lockInfo[account].lastClaimTimestamp);
+        return _lockInfo[account].amount.mul(progressTime).div(lockTime);
     }
     
     /**
@@ -80,17 +86,28 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
      *  Parameter-Setters
      */
 
-    function setLockTime(uint256 _lockTime) public onlyOwner {
-        lockTime = _lockTime;
+    function setLockTime(uint256 _lockTime) external onlyOwner {
+        require((_lockTime > 7 days) && (_lockTime < 90 days), "Lock Time between 7 - 90 days");
+        require(_lockTime != lockTime, "Same as currently set lockTime");
+        newLockTime = _lockTime;
+        // Set timestamp for advance notice
+        noticeTimestamp = block.timestamp;
+        emit SetLockTime(_lockTime);
     }
-    
+
+    function effectLockTime() external onlyOwner{
+        require(block.timestamp.sub(noticeTimestamp) >= advanceNoticeTime, "Not available yet");
+        lockTime = newLockTime;
+        emit LockTimeEffective(lockTime);
+    }
+
     /**
      * @dev Pool transfer slow-release to user with `lockTime`.
      *      NOTE: If you want to do the partial lock
      *        using both transfer and transferWithLock 
      *        to the specified amount.
      */
-    function transferWithLock(address recipient, uint256 amount) public onlyPools returns (bool) {
+    function transferWithLock(address recipient, uint256 amount) external onlyPools returns (bool) {
         require(amount > 0, "amount: invalid amount");
         _transferWithLock(_msgSender(), recipient, amount);
         return true;
@@ -99,7 +116,7 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
     /**
      * @dev User manual claim
      */
-    function claimUnlocked() public {
+    function claimUnlocked() external{
         _claimUnlocked(_msgSender());
     }
 
@@ -163,25 +180,18 @@ abstract contract ERC20SlowRelease is ERC20, Ownable{
 
     
     // Add new Pool
-    function addPool(address pool_address) public onlyOwner {
-        require(pools[pool_address] == false, "poolExisted");
-        pools[pool_address] = true;
+    function addPool(address pool_address) external onlyOwner {
+        require(pools[pool_address] == 0, "poolExisted");
         pools_array.push(pool_address);
+        pools[pool_address] = pools_array.length;
         emit PoolAdded(pool_address);
     }
 
     // Remove a pool
-    function removePool(address pool_address) public onlyOwner {
-        require(pools[pool_address] == true, "!pool");
-        // Delete from the mapping
+    function removePool(address pool_address) external onlyOwner {
+        require(pools[pool_address] > 0, "poolNotExist");
+        pools_array[pools[pool_address] - 1] = address(0);
         delete pools[pool_address];
-        // 'Delete' from the array by setting the address to 0x0
-        for (uint256 i = 0; i < pools_array.length; i++) {
-            if (pools_array[i] == pool_address) {
-                pools_array[i] = address(0); // This will leave a null in the array and keep the indices the same
-                break;
-            }
-        }
         emit PoolRemoved(pool_address);
     }
 }
